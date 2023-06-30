@@ -1,0 +1,42 @@
+{
+	"info": {
+		"_postman_id": "f36bd86b-cb9c-42f0-b6a9-511eba264c8b",
+		"name": "email_service_api",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "LOCAL Send Email API",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"subject\": \"Test Email\",\n    \"recipients\": [\n        \"sm_email1@mailinator.com\",\n        \"sm_email2@mailinator.com\",\n        \"sm_email3@mailinator.com\",\n        \"sm_email4@mailinator.com\",\n        \"sm_email5@mailinator.com\"\n    ],\n    \"cc\": [\n        \"sm_email1@mailinator.com\",\n        \"sm_email2@mailinator.com\",\n        \"sm_email3@mailinator.com\",\n        \"sm_email4@mailinator.com\",\n        \"sm_email5@mailinator.com\"\n    ],\n    \"bcc\": [\n        \"sm_email1@mailinator.com\",\n        \"sm_email2@mailinator.com\",\n        \"sm_email3@mailinator.com\",\n        \"sm_email4@mailinator.com\",\n        \"sm_email5@mailinator.com\"\n    ],\n    \"body\": \"SiteMinder Technical Assessment\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/send-email",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"send-email"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

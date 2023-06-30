@@ -1,0 +1,8 @@
+cloud:
+  aws:
+    source-email: "source email"
+    region:
+      static: us-east-2
+mail-gun:
+  api-key: "domain api key"
+  source-email: "domain name"
