@@ -1,51 +1,83 @@
 package com.example.email.service.infrastructure.services.impl;
 
-import com.example.email.service.application.exceptions.EmailSendingFailedException;
+import com.example.email.service.application.exceptions.Request4xxException;
+import com.example.email.service.application.exceptions.Response5xxException;
 import com.example.email.service.domain.models.valueobjects.SendEmailRequest;
 import com.example.email.service.domain.models.valueobjects.SendEmailResponse;
+import com.example.email.service.infrastructure.config.MailgunProperties;
 import com.example.email.service.infrastructure.services.EmailService;
-import com.mailgun.api.v3.MailgunMessagesApi;
-import com.mailgun.model.message.Message;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class MailGunImpl extends EmailService {
-  @Value("${mail-gun.source-email}")
-  private String sendingDomain;
+    private final MailgunProperties mailgunProperties;
 
-  private final MailgunMessagesApi mailgunMessagesApi;
+    private final WebClient mailGunClient;
 
-  @Override
-  public SendEmailResponse sendEmail(SendEmailRequest sendEmailRequest) {
-    try {
-      Message message =
-          Message.builder()
-              .from(String.format("mailgun@%s", sendingDomain))
-              .to(sendEmailRequest.getRecipients())
-              .cc(sendEmailRequest.getCc())
-              .bcc(sendEmailRequest.getBcc())
-              .subject(sendEmailRequest.getSubject())
-              .text(sendEmailRequest.getBody())
-              .build();
-      mailgunMessagesApi.sendMessage(sendingDomain, message);
-      SendEmailResponse response = new SendEmailResponse();
-      response.setMessage("SUCCESS");
-      response.setStatus(200);
-      response.setHandler("MAILGUN");
+    @Override
+    public SendEmailResponse sendEmail(SendEmailRequest sendEmailRequest) {
+        String url = String.format("%s/%s", mailgunProperties.getSourceEmail(), "messages");
+        try {
+            MultiValueMap<String, String> formData = buildRequest(sendEmailRequest);
+            mailGunClient
+                    .post()
+                    .uri(url)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .body(BodyInserters.fromFormData(formData))
+                    .retrieve()
+                    .onStatus(HttpStatusCode::is4xxClientError, response ->
+                            response.bodyToMono(String.class).map(ex -> new Request4xxException(ex, response.statusCode().value()))
+                    )
+                    .onStatus(HttpStatusCode::is5xxServerError, response ->
+                            response.bodyToMono(String.class).map(ex -> new Response5xxException(ex, response.statusCode().value()))).
+                    toBodilessEntity().block();
 
-      return response;
-    } catch (Exception e) {
-      log.error("The email was not sent. Error message: " + e.getMessage());
-      if (nextProcessor != null) {
-        log.info("Failed sending email via Amazon SES Trying Mail Gun..");
-        return nextProcessor.sendEmail(sendEmailRequest);
-      }
-      throw new EmailSendingFailedException(e);
+            SendEmailResponse response = new SendEmailResponse();
+            response.setMessage("SUCCESS");
+            response.setStatus(200);
+            response.setHandler("MAILGUN");
+
+            return response;
+        } catch (Exception e) {
+            log.error("The email was not sent. Error message: " + e.getMessage());
+            if (nextProcessor != null) {
+                log.info("Failed sending email via {}. Trying {}", this.getClass(), nextProcessor.getClass());
+                return nextProcessor.sendEmail(sendEmailRequest);
+            }
+            throw e;
+        }
     }
-  }
+
+    private MultiValueMap<String, String> buildEmailList(String name, List<String> values) {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        for (String val : values) {
+            form.add(name, val);
+        }
+
+        return form;
+    }
+
+    private MultiValueMap<String, String> buildRequest(SendEmailRequest sendEmailRequest) {
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("from", String.format("%s <mailgun@%s>", "MailGun", mailgunProperties.getSourceEmail()));
+        formData.addAll(buildEmailList("to", sendEmailRequest.getRecipients()));
+        formData.addAll(buildEmailList("cc", sendEmailRequest.getCc()));
+        formData.addAll(buildEmailList("bcc", sendEmailRequest.getBcc()));
+        formData.add("subject", sendEmailRequest.getSubject());
+        formData.add("text", sendEmailRequest.getBody());
+
+        return formData;
+    }
 }

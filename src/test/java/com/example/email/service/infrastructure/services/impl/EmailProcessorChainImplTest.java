@@ -3,6 +3,7 @@ package com.example.email.service.infrastructure.services.impl;
 import com.example.email.service.TestFixtures;
 import com.example.email.service.domain.models.valueobjects.SendEmailRequest;
 import com.example.email.service.domain.models.valueobjects.SendEmailResponse;
+import com.example.email.service.infrastructure.services.EmailService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -15,15 +16,16 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class EmailProcessorChainImplTest {
-  @Mock private AmazonSESImpl amazonSES;
-  @Mock private MailGunImpl mailGun;
-  @InjectMocks private EmailProcessorChainImpl emailProcessorChain;
+    @Mock
+    private EmailService emailService;
+    @InjectMocks
+    private EmailProcessorChainImpl emailProcessorChain;
 
-  @Test
-  public void startChain_ok() {
-    when(amazonSES.sendEmail(any(SendEmailRequest.class)))
-        .thenReturn(TestFixtures.sendEmailResponse());
-    SendEmailResponse response = emailProcessorChain.startChain(TestFixtures.sendEmailRequest());
-    assertEquals(TestFixtures.sendEmailResponse(), response);
-  }
+    @Test
+    public void startChain_ok() {
+        when(emailService.sendEmail(any(SendEmailRequest.class)))
+                .thenReturn(TestFixtures.sendEmailResponse());
+        SendEmailResponse response = emailProcessorChain.startChain(TestFixtures.sendEmailRequest());
+        assertEquals(TestFixtures.sendEmailResponse(), response);
+    }
 }

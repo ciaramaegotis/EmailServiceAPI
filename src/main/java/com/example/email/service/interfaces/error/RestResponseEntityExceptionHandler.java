@@ -1,13 +1,11 @@
 package com.example.email.service.interfaces.error;
 
-import com.amazonaws.services.simpleemail.model.AmazonSimpleEmailServiceException;
-import com.example.email.service.application.exceptions.EmailSendingFailedException;
+import com.example.email.service.application.exceptions.Request4xxException;
+import com.example.email.service.application.exceptions.Response5xxException;
 import com.example.email.service.domain.models.valueobjects.SendEmailResponse;
-import feign.FeignException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -22,37 +20,40 @@ import java.util.stream.Collectors;
 @ControllerAdvice
 public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionHandler {
 
-  @ExceptionHandler({EmailSendingFailedException.class})
-  public ResponseEntity<SendEmailResponse> emailSendingFailedException(
-      EmailSendingFailedException ex) {
-    SendEmailResponse response = new SendEmailResponse();
-    response.setStatus(resolveStatusCode(ex.getCause()));
-    response.setMessage("FAILED");
-    response.setDetails(ex.getMessage());
-    return ResponseEntity.internalServerError().body(response);
-  }
+    @ExceptionHandler({Request4xxException.class})
+    public ResponseEntity<SendEmailResponse> exception4xxHandler(
+            Request4xxException ex) {
+        SendEmailResponse response = new SendEmailResponse();
+        response.setStatus(ex.getStatusCode());
+        response.setMessage("FAILED");
+        response.setDetails(ex.getMessage());
 
-  private int resolveStatusCode(Throwable cause) {
-    if (cause instanceof AmazonSimpleEmailServiceException) {
-      return ((AmazonSimpleEmailServiceException) cause).getStatusCode();
-    } else if (cause instanceof FeignException) {
-      return ((FeignException) cause).status();
+        return ResponseEntity.status(ex.getStatusCode()).body(response);
     }
-    return HttpStatus.INTERNAL_SERVER_ERROR.value();
-  }
 
-  @Override
-  protected ResponseEntity<Object> handleMethodArgumentNotValid(
-      MethodArgumentNotValidException ex,
-      HttpHeaders headers,
-      HttpStatusCode status,
-      WebRequest request) {
-    SendEmailResponse response = new SendEmailResponse();
-    response.setStatus(400);
-    response.setMessage(
-        ex.getFieldErrors().stream()
-            .map(entry -> String.format("%s %s", entry.getField(), entry.getDefaultMessage()))
-            .collect(Collectors.joining(", ")));
-    return ResponseEntity.badRequest().body(response);
-  }
+    @ExceptionHandler({Response5xxException.class})
+    public ResponseEntity<SendEmailResponse> exception5xxHandler(
+            Response5xxException ex) {
+        SendEmailResponse response = new SendEmailResponse();
+        response.setStatus(ex.getStatusCode());
+        response.setMessage("FAILED");
+        response.setDetails(ex.getMessage());
+
+        return ResponseEntity.status(ex.getStatusCode()).body(response);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            WebRequest request) {
+        SendEmailResponse response = new SendEmailResponse();
+        response.setStatus(400);
+        response.setMessage(
+                ex.getFieldErrors().stream()
+                        .map(entry -> String.format("%s %s", entry.getField(), entry.getDefaultMessage()))
+                        .collect(Collectors.joining(", ")));
+        return ResponseEntity.badRequest().body(response);
+    }
 }

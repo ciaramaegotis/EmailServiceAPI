@@ -3,7 +3,7 @@ package com.example.email.service.infrastructure.services.impl;
 import com.example.email.service.TestFixtures;
 import com.example.email.service.application.exceptions.Request4xxException;
 import com.example.email.service.domain.models.valueobjects.SendEmailResponse;
-import com.example.email.service.infrastructure.config.MailgunProperties;
+import com.example.email.service.infrastructure.config.SendgridProperties;
 import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,15 +19,15 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @RequiredArgsConstructor
-public class MailGunImplTest {
+public class SendGridImplTest {
     @Mock
-    private SendGridImpl sendGrid;
-    @InjectMocks
     private MailGunImpl mailGun;
     @Mock
-    private WebClient mailGunClient;
+    private WebClient sendgridClient;
     @Mock
-    private MailgunProperties mailgunProperties;
+    private SendgridProperties sendgridProperties;
+    @InjectMocks
+    private SendGridImpl sendGrid;
     @Mock
     private WebClient.RequestBodyUriSpec requestBodyUriSpec;
     @Mock
@@ -39,46 +39,46 @@ public class MailGunImplTest {
 
     @Test
     void sendEmail_ok() {
-        when(mailgunProperties.getSourceEmail()).thenReturn("source-email");
-        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(sendgridProperties.getSourceEmail()).thenReturn("source-email");
         when(responseSpec.toBodilessEntity()).thenReturn(Mono.empty());
+        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(requestBodySpec.contentType(any())).thenReturn(requestBodySpec);
         when(requestBodySpec.body(any())).thenReturn(requestHeadersSpec);
         when(requestBodyUriSpec.uri(any(String.class))).thenReturn(requestBodySpec);
         when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
-        when(mailGunClient.post()).thenReturn(requestBodyUriSpec);
+        when(sendgridClient.post()).thenReturn(requestBodyUriSpec);
 
 
-        SendEmailResponse response = mailGun.sendEmail(TestFixtures.sendEmailRequest());
+        SendEmailResponse response = sendGrid.sendEmail(TestFixtures.sendEmailRequest());
         assertEquals(200, response.getStatus());
         assertEquals("SUCCESS", response.getMessage());
-        assertEquals("MAILGUN", response.getHandler());
+        assertEquals("SENDGRID", response.getHandler());
     }
 
     @Test
     void sendEmail_4xx() {
-        when(mailgunProperties.getSourceEmail()).thenReturn("source-email");
+        when(sendgridProperties.getSourceEmail()).thenReturn("source-email");
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(requestBodySpec.contentType(any())).thenReturn(requestBodySpec);
         when(requestBodySpec.body(any())).thenReturn(requestHeadersSpec);
         when(requestBodyUriSpec.uri(any(String.class))).thenReturn(requestBodySpec);
         when(responseSpec.onStatus(any(), any())).thenThrow(new Request4xxException("message", 400));
-        when(mailGunClient.post()).thenReturn(requestBodyUriSpec);
+        when(sendgridClient.post()).thenReturn(requestBodyUriSpec);
 
-        assertThrows(Request4xxException.class, () -> mailGun.sendEmail(TestFixtures.sendEmailRequest()));
+        assertThrows(Request4xxException.class, () -> sendGrid.sendEmail(TestFixtures.sendEmailRequest()));
     }
 
     @Test
     void sendEmail_ErrorWithSuccess() {
-        mailGun.setNextProcessor(sendGrid);
-        when(mailgunProperties.getSourceEmail()).thenReturn("source-email");
+        sendGrid.setNextProcessor(mailGun);
+        when(sendgridProperties.getSourceEmail()).thenReturn("source-email");
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(requestBodySpec.contentType(any())).thenReturn(requestBodySpec);
         when(requestBodySpec.body(any())).thenReturn(requestHeadersSpec);
         when(requestBodyUriSpec.uri(any(String.class))).thenReturn(requestBodySpec);
         when(responseSpec.onStatus(any(), any())).thenThrow(new Request4xxException("message", 400));
-        when(mailGunClient.post()).thenReturn(requestBodyUriSpec);
+        when(sendgridClient.post()).thenReturn(requestBodyUriSpec);
 
-        assertDoesNotThrow(() -> mailGun.sendEmail(TestFixtures.sendEmailRequest()));
+        assertDoesNotThrow(() -> sendGrid.sendEmail(TestFixtures.sendEmailRequest()));
     }
 }
