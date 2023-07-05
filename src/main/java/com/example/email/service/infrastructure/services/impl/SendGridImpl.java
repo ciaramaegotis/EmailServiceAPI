@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.ObjectUtils;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -59,6 +60,9 @@ public class SendGridImpl extends EmailService {
     }
 
     private List<Email> convertEmail(List<String> emails) {
+        if (ObjectUtils.isEmpty(emails)) {
+            return null;
+        }
         return emails.stream().map(em -> Email.builder().email(em).build()).collect(Collectors.toList());
     }
 

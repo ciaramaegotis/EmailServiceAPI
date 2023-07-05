@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.util.ObjectUtils;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -62,6 +63,10 @@ public class MailGunImpl extends EmailService {
 
     private MultiValueMap<String, String> buildEmailList(String name, List<String> values) {
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+
+        if (ObjectUtils.isEmpty(values)) {
+            return form;
+        }
         for (String val : values) {
             form.add(name, val);
         }
@@ -73,8 +78,14 @@ public class MailGunImpl extends EmailService {
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("from", String.format("%s <mailgun@%s>", "MailGun", mailgunProperties.getSourceEmail()));
         formData.addAll(buildEmailList("to", sendEmailRequest.getRecipients()));
-        formData.addAll(buildEmailList("cc", sendEmailRequest.getCc()));
-        formData.addAll(buildEmailList("bcc", sendEmailRequest.getBcc()));
+        MultiValueMap<String, String> ccList = buildEmailList("cc", sendEmailRequest.getCc());
+        if (!ObjectUtils.isEmpty(ccList)) {
+            formData.addAll(ccList);
+        }
+        MultiValueMap<String, String> bccList = buildEmailList("bcc", sendEmailRequest.getBcc());
+        if (!ObjectUtils.isEmpty(bccList)) {
+            formData.addAll(bccList);
+        }
         formData.add("subject", sendEmailRequest.getSubject());
         formData.add("text", sendEmailRequest.getBody());
 
